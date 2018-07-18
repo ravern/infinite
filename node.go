@@ -22,7 +22,7 @@ type Node struct {
 	conn *Conn
 
 	loaded   bool
-	value    string
+	value    []byte
 	children map[string]*Node
 }
 
@@ -79,7 +79,7 @@ func load(nodePath string, fs vfs.Filesystem, depth int, curDepth int) (*Node, e
 	}
 
 	// Decode and set the value
-	node.value, err = value(files).decode()
+	node.value, err = decodeValue(files)
 	if err != nil {
 		return nil, err
 	}
@@ -118,18 +118,17 @@ func (n *Node) SaveVirtual(fs vfs.Filesystem) error {
 
 // Value returns the value of the node.
 //
-// Returns an error if the node has not been loaded.
-func (n *Node) Value() (string, error) {
+// Will fail if the node has not been loaded.
+func (n *Node) Value() ([]byte, error) {
 	if !n.loaded {
-		return "", ErrNotLoaded
+		return nil, ErrNotLoaded
 	}
 	return n.value, nil
 }
 
 // Child returns the child node with the corresponding key.
 //
-// Returns an error if the node has not been loaded or if the child cannot be
-// found.
+// Will fail if the node has not been loaded or if the child cannot be found.
 func (n *Node) Child(key string) (*Node, error) {
 	if !n.loaded {
 		return nil, ErrNotLoaded

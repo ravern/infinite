@@ -12,17 +12,13 @@ var root = &kubo.Command{
 	Name:        "infinite",
 	Description: "the database that can store the internet",
 	Run: func(ctx *kubo.Context) error {
-		node, err := infinite.LoadDepth("db", 0)
+		node, err := infinite.Load("db")
 		if err != nil {
 			return err
 		}
 
-		node, err = node.Child("boom")
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(node.Value())
+		v, _ := node.Value()
+		fmt.Println(string(v))
 
 		return nil
 	},
