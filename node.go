@@ -1,6 +1,8 @@
 package infinite
 
 import (
+	"path"
+
 	"github.com/blang/vfs"
 )
 
@@ -12,46 +14,90 @@ const maxInt = int(^uint(0) >> 1)
 // in the filesystem, while its value is derived from the names of all the files
 // within it. Any subdirectories would be child nodes.
 //
-// A node can sometimes be in an unloaded state, which means that its children
-// have not been read from the filesystem. This is desirable in circumstances
-// where the amount of data contained in the child nodes is large and should
-// only be loaded on-demand.
+// A node can sometimes be in an unloaded state, which means that its value and
+// its children have not been read from the filesystem. This is desirable in
+// circumstances where the amount of data contained in the child nodes is large
+// and should only be loaded on-demand.
 type Node struct {
 	conn *Conn
 
+	loaded   bool
 	value    string
-	children []*Node
+	children map[string]*Node
 }
 
-// Load loads a node from the OS filesystem.
+// Load loads a node at the given path from the OS filesystem.
 //
 // For more details, see LoadVirtual.
-func Load() (*Node, error) {
-	return LoadVirtual(vfs.OS())
+func Load(path string) (*Node, error) {
+	return LoadVirtual(path, vfs.OS())
 }
 
-// LoadDepth loads a node from the OS filesystem, up to the given depth.
+// LoadDepth loads a node at the given path from the OS filesystem, up to the
+// given depth.
 //
-// For more details, see LoadDepthVirtual.
-func LoadDepth(depth int) (*Node, error) {
-	return LoadDepthVirtual(depth, vfs.OS())
+// For more details, see LoadVirtualDepth.
+func LoadDepth(path string, depth int) (*Node, error) {
+	return LoadVirtualDepth(path, vfs.OS(), depth)
 }
 
-// LoadVirtual loads a node from the given filesystem.
+// LoadVirtual loads a node at the given path from the given filesystem.
 //
 // All data contained in the node (including child nodes) is read from the
 // filesystem in a recursive manner.
-func LoadVirtual(fs vfs.Filesystem) (*Node, error) {
-	return LoadDepthVirtual(maxInt, fs)
+func LoadVirtual(path string, fs vfs.Filesystem) (*Node, error) {
+	return LoadVirtualDepth(path, fs, maxInt)
 }
 
-// LoadDepthVirtual loads a node from the given filesystem, up to the given
-// depth.
+// LoadVirtualDepth loads a node at the given path from the given filesystem, up
+// to the given depth.
 //
 // Data contained in the node (including child nodes) is read from the
 // filesystem in a recursive manner, up to the given depth.
-func LoadDepthVirtual(depth int, fs vfs.Filesystem) (*Node, error) {
-	return nil, nil
+func LoadVirtualDepth(path string, fs vfs.Filesystem, depth int) (*Node, error) {
+	return load(path, fs, depth, 0)
+}
+
+// load loads a node at the given path from the given filesystem, up to the
+// given depth, if the current depth is still valid.
+func load(nodePath string, fs vfs.Filesystem, depth int, curDepth int) (*Node, error) {
+	node := Node{
+		conn: &Conn{
+			path: nodePath,
+			fs:   fs,
+		},
+	}
+
+	// If the depth has been reached, then don't load anything else
+	if curDepth == depth {
+		return &node, nil
+	}
+
+	files, dirs, err := node.conn.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode and set the value
+	node.value, err = value(files).decode()
+	if err != nil {
+		return nil, err
+	}
+
+	// Load and set each child
+	node.children = make(map[string]*Node)
+	for _, dir := range dirs {
+		child, err := load(path.Join(nodePath, dir), fs, depth, curDepth+1)
+		if err != nil {
+			return nil, err
+		}
+
+		node.children[dir] = child
+	}
+
+	node.loaded = true
+
+	return &node, nil
 }
 
 // Save saves the node to the OS filesystem.
@@ -68,4 +114,29 @@ func (n *Node) Save() error {
 // is removed from the filesystem.
 func (n *Node) SaveVirtual(fs vfs.Filesystem) error {
 	return nil
+}
+
+// Value returns the value of the node.
+//
+// Returns an error if the node has not been loaded.
+func (n *Node) Value() (string, error) {
+	if !n.loaded {
+		return "", ErrNotLoaded
+	}
+	return n.value, nil
+}
+
+// Child returns the child node with the corresponding key.
+//
+// Returns an error if the node has not been loaded or if the child cannot be
+// found.
+func (n *Node) Child(key string) (*Node, error) {
+	if !n.loaded {
+		return nil, ErrNotLoaded
+	}
+	c, ok := n.children[key]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return c, nil
 }
