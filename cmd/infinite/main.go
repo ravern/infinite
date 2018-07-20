@@ -17,8 +17,20 @@ var root = &kubo.Command{
 			return err
 		}
 
-		v, _ := node.Value()
-		fmt.Println(string(v))
+		value, err := node.Value()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(value))
+
+		if err := node.SetValue([]byte("Boom!")); err != nil {
+			return err
+		}
+
+		if err := node.Save(); err != nil {
+			return err
+		}
 
 		return nil
 	},

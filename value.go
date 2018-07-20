@@ -1,7 +1,9 @@
 package infinite
 
 import (
+	"bytes"
 	"encoding/base64"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,8 +16,48 @@ const maxNameLen = 255
 // The value is first split into chunks. These chunks are encoded using base64.
 // They are then enumerated. These will be returned as the names, to be saved as
 // files to store data.
-func encodeValue(bb []byte) []string {
-	return nil
+func encodeValue(bb []byte) ([]string, error) {
+	var (
+		nn        []name
+		buf       bytes.Buffer
+		maxBufLen int
+	)
+
+	next := func() {
+		if buf.Len() > 0 {
+			bb := make([]byte, buf.Len())
+			copy(bb, buf.Bytes())
+
+			n := name{
+				index: len(nn),
+				chunk: bb,
+			}
+
+			nn = append(nn, n)
+			buf = bytes.Buffer{}
+		}
+		maxBufLen = (maxNameLen / 4 * 3) - digits(len(nn)) - 1
+	}
+
+	next()
+	for _, b := range bb {
+		if buf.Len() >= maxBufLen {
+			next()
+		}
+
+		if err := buf.WriteByte(b); err != nil {
+			return nil, err
+		}
+	}
+	next()
+
+	ss := make([]string, len(nn))
+
+	for i, n := range nn {
+		ss[i] = n.String()
+	}
+
+	return ss, nil
 }
 
 // decodeValue decodes the given names to a value.
@@ -49,12 +91,7 @@ func decodeValue(ss []string) ([]byte, error) {
 		}
 		prev = n.index
 
-		b, err := base64.URLEncoding.DecodeString(n.chunk)
-		if err != nil {
-			return nil, ErrInvalidValue
-		}
-
-		bb = append(bb, b...)
+		bb = append(bb, n.chunk...)
 	}
 
 	return bb, nil
@@ -65,12 +102,13 @@ func decodeValue(ss []string) ([]byte, error) {
 // name is an intermediate representation of encoding or decoding a value.
 type name struct {
 	index int
-	chunk string
+	chunk []byte
 }
 
 // newName creates a new name.
 //
-// Will fail when
+// Will fail when the wrong amount of components are found, or when the second
+// component does not contain an integer.
 func newName(s string) (name, error) {
 	comps := strings.Split(s, ".")
 	if len(comps) != 2 {
@@ -82,10 +120,20 @@ func newName(s string) (name, error) {
 		return name{}, ErrInvalidValue
 	}
 
+	chunk, err := base64.URLEncoding.DecodeString(comps[0])
+	if err != nil {
+		return name{}, ErrInvalidValue
+	}
+
 	return name{
 		index: index,
-		chunk: comps[0],
+		chunk: chunk,
 	}, nil
+}
+
+func (n name) String() string {
+	chunk := base64.URLEncoding.EncodeToString(n.chunk)
+	return fmt.Sprintf("%s.%d", chunk, n.index)
 }
 
 // names represents a sortable slice of names.
@@ -110,6 +158,10 @@ func (n names) Swap(i int, j int) {
 func digits(n int) int {
 	if n < 0 {
 		n = -n
+	}
+
+	if n == 0 {
+		return 1
 	}
 
 	var c int

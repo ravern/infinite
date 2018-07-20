@@ -1,6 +1,7 @@
 package infinite
 
 import (
+	"os"
 	"path"
 
 	"github.com/blang/vfs"
@@ -119,19 +120,70 @@ func (n *Node) load(depth int, curDepth int) error {
 	return nil
 }
 
-// Save saves the node to the OS filesystem.
-//
-// For more details, see SaveVirtual.
-func (n *Node) Save() error {
-	return n.SaveVirtual(vfs.OS())
-}
-
-// SaveVirtual saves the node to the given filesystem.
+// Save saves the node.
 //
 // All data contained in the node (including child nodes) is written into the
 // filesystem in a recursive manner. Any data that is not defined in the node
 // is removed from the filesystem.
-func (n *Node) SaveVirtual(fs vfs.Filesystem) error {
+func (n *Node) Save() error {
+	if err := removeContents(n.conn.Path(), n.conn.fs); err != nil {
+		return err
+	}
+
+	for _, child := range n.children {
+		if err := child.Save(); err != nil {
+			return err
+		}
+	}
+
+	names, err := encodeValue(n.value)
+	if err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		path := path.Join(n.conn.Path(), name)
+		f, err := n.conn.fs.OpenFile(path, os.O_CREATE, 0644)
+		if err != nil {
+			return err
+		}
+		f.Close()
+	}
+
+	return nil
+}
+
+// removeContents removes the contents of the directory at the given path.
+func removeContents(dirPath string, fs vfs.Filesystem) error {
+	infos, err := fs.ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+
+	for _, info := range infos {
+		path := path.Join(dirPath, info.Name())
+		if info.IsDir() {
+			if err := removeContents(path, fs); err != nil {
+				return err
+			}
+		}
+
+		if err := fs.Remove(path); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// SetValue sets the value of the node.
+//
+// Will fail if the node has not been loaded.
+func (n *Node) SetValue(value []byte) error {
+	if !n.loaded {
+		return ErrNotLoaded
+	}
+	n.value = value
 	return nil
 }
 
