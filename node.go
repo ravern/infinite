@@ -28,9 +28,16 @@ type Node struct {
 
 // Load loads a node at the given path from the OS filesystem.
 //
-// For more details, see LoadVirtual.
+// For more details, see LoadVirtualDepth.
 func Load(path string) (*Node, error) {
 	return LoadVirtual(path, vfs.OS())
+}
+
+// LoadVirtual loads a node at the given path from the given filesystem.
+//
+// For more details, see LoadVirtualDepth.
+func LoadVirtual(path string, fs vfs.Filesystem) (*Node, error) {
+	return LoadVirtualDepth(path, fs, maxInt)
 }
 
 // LoadDepth loads a node at the given path from the OS filesystem, up to the
@@ -41,63 +48,75 @@ func LoadDepth(path string, depth int) (*Node, error) {
 	return LoadVirtualDepth(path, vfs.OS(), depth)
 }
 
-// LoadVirtual loads a node at the given path from the given filesystem.
-//
-// All data contained in the node (including child nodes) is read from the
-// filesystem in a recursive manner.
-func LoadVirtual(path string, fs vfs.Filesystem) (*Node, error) {
-	return LoadVirtualDepth(path, fs, maxInt)
-}
-
 // LoadVirtualDepth loads a node at the given path from the given filesystem, up
 // to the given depth.
 //
 // Data contained in the node (including child nodes) is read from the
 // filesystem in a recursive manner, up to the given depth.
 func LoadVirtualDepth(path string, fs vfs.Filesystem, depth int) (*Node, error) {
-	return load(path, fs, depth, 0)
+	n := Node{
+		conn: &Conn{
+			path: path,
+			fs:   fs,
+		},
+	}
+	return &n, n.LoadDepth(depth)
+}
+
+// Load loads the node.
+//
+// For more details, see LoadVirtualDepth.
+func (n *Node) Load() error {
+	return n.LoadDepth(maxInt)
+}
+
+// LoadDepth loads the node, up to the given depth.
+//
+// For more details, see LoadVirtualDepth.
+func (n *Node) LoadDepth(depth int) error {
+	return n.load(depth, 0)
 }
 
 // load loads a node at the given path from the given filesystem, up to the
 // given depth, if the current depth is still valid.
-func load(nodePath string, fs vfs.Filesystem, depth int, curDepth int) (*Node, error) {
-	node := Node{
-		conn: &Conn{
-			path: nodePath,
-			fs:   fs,
-		},
-	}
-
+func (n *Node) load(depth int, curDepth int) error {
 	// If the depth has been reached, then don't load anything else
 	if curDepth == depth {
-		return &node, nil
+		return nil
 	}
 
-	files, dirs, err := node.conn.Load()
+	files, dirs, err := n.conn.Load()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Decode and set the value
-	node.value, err = decodeValue(files)
+	n.value, err = decodeValue(files)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Load and set each child
-	node.children = make(map[string]*Node)
+	n.children = make(map[string]*Node)
 	for _, dir := range dirs {
-		child, err := load(path.Join(nodePath, dir), fs, depth, curDepth+1)
-		if err != nil {
-			return nil, err
+		child := Node{
+			conn: &Conn{
+				path: path.Join(n.conn.path, dir),
+				fs:   n.conn.fs,
+			},
 		}
 
-		node.children[dir] = child
+		err := child.load(depth, curDepth+1)
+		if err != nil {
+			return err
+		}
+
+		n.children[dir] = &child
 	}
 
-	node.loaded = true
+	n.loaded = true
 
-	return &node, nil
+	return nil
 }
 
 // Save saves the node to the OS filesystem.
