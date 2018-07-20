@@ -15,10 +15,10 @@ type Conn struct {
 	fs   vfs.Filesystem
 }
 
-// Load loads data at the path from the filesystem.
+// ReadDir loads data at the path from the filesystem.
 //
 // Returns the file names, directory names and a possible error.
-func (c *Conn) Load() ([]string, []string, error) {
+func (c *Conn) ReadDir() ([]string, []string, error) {
 	infos, err := c.fs.ReadDir(c.path)
 	if err != nil {
 		return nil, nil, err

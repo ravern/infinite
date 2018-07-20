@@ -85,7 +85,7 @@ func (n *Node) load(depth int, curDepth int) error {
 		return nil
 	}
 
-	files, dirs, err := n.conn.Load()
+	files, dirs, err := n.conn.ReadDir()
 	if err != nil {
 		return err
 	}
