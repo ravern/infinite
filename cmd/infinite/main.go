@@ -4,49 +4,30 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ravernkoh/infinite"
 	"github.com/ravernkoh/kubo"
 )
 
-var root = &kubo.Command{
-	Name:        "infinite",
-	Description: "the database that can store the internet",
-	Run: func(ctx *kubo.Context) error {
-		node, err := infinite.Load("db")
-		if err != nil {
-			return err
-		}
+var (
+	root     *kubo.Command
+	value    *kubo.Command
+	children *kubo.Command
+)
 
-		value, err := node.Value()
-		if err != nil {
-			return err
-		}
+func init() {
+	root = &kubo.Command{
+		Name:        "infinite",
+		Description: "the database that can store the internet",
+	}
 
-		fmt.Println(string(value))
+	help := root.Help()
 
-		if err := node.SetValue([]byte("Boom!")); err != nil {
-			return err
-		}
-
-		child, err := node.NewChild("boom")
-		if err != nil {
-			return err
-		}
-
-		if err := child.SetValue([]byte("lollllllllll")); err != nil {
-			return err
-		}
-
-		if err := node.Save(); err != nil {
-			return err
-		}
-
-		return nil
-	},
+	root.Run = help.Run
+	root.Add(help)
 }
 
 func main() {
-	root.Add(root.Help())
+	root.Add(value)
+	root.Add(children)
 
 	if err := kubo.NewApp(root).Run(os.Args); err != nil {
 		fmt.Printf("Error: %v\n", err)

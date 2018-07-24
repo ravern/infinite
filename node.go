@@ -217,3 +217,14 @@ func (n *Node) Child(key string) (*Node, error) {
 	}
 	return c, nil
 }
+
+// Children returns the children nodes.
+//
+// Will fail if the node has not been loaded.
+func (n *Node) Children() (map[string]*Node, error) {
+	if !n.loaded {
+		return nil, ErrNotLoaded
+	}
+
+	return n.children, nil
+}
