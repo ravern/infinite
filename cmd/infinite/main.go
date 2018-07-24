@@ -28,6 +28,15 @@ var root = &kubo.Command{
 			return err
 		}
 
+		child, err := node.NewChild("boom")
+		if err != nil {
+			return err
+		}
+
+		if err := child.SetValue([]byte("lollllllllll")); err != nil {
+			return err
+		}
+
 		if err := node.Save(); err != nil {
 			return err
 		}

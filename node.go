@@ -126,7 +126,11 @@ func (n *Node) load(depth int, curDepth int) error {
 // filesystem in a recursive manner. Any data that is not defined in the node
 // is removed from the filesystem.
 func (n *Node) Save() error {
-	if err := removeContents(n.conn.Path(), n.conn.fs); err != nil {
+	if err := vfs.RemoveAll(n.conn.fs, n.conn.Path()); err != nil {
+		return err
+	}
+
+	if err := n.conn.fs.Mkdir(n.conn.Path(), 0755); err != nil {
 		return err
 	}
 
@@ -153,29 +157,6 @@ func (n *Node) Save() error {
 	return nil
 }
 
-// removeContents removes the contents of the directory at the given path.
-func removeContents(dirPath string, fs vfs.Filesystem) error {
-	infos, err := fs.ReadDir(dirPath)
-	if err != nil {
-		return err
-	}
-
-	for _, info := range infos {
-		path := path.Join(dirPath, info.Name())
-		if info.IsDir() {
-			if err := removeContents(path, fs); err != nil {
-				return err
-			}
-		}
-
-		if err := fs.Remove(path); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // SetValue sets the value of the node.
 //
 // Will fail if the node has not been loaded.
@@ -197,6 +178,31 @@ func (n *Node) Value() ([]byte, error) {
 	return n.value, nil
 }
 
+// NewChild creates a new child node.
+//
+// Will fail if the node has not been loaded or if the child already exists.
+func (n *Node) NewChild(key string) (*Node, error) {
+	if !n.loaded {
+		return nil, ErrNotLoaded
+	}
+
+	_, ok := n.children[key]
+	if ok {
+		return nil, ErrAlreadyExists
+	}
+
+	c := &Node{
+		loaded: true,
+		conn: &Conn{
+			path: path.Join(n.conn.path, key),
+			fs:   n.conn.fs,
+		},
+	}
+	n.children[key] = c
+
+	return c, nil
+}
+
 // Child returns the child node with the corresponding key.
 //
 // Will fail if the node has not been loaded or if the child cannot be found.
@@ -204,6 +210,7 @@ func (n *Node) Child(key string) (*Node, error) {
 	if !n.loaded {
 		return nil, ErrNotLoaded
 	}
+
 	c, ok := n.children[key]
 	if !ok {
 		return nil, ErrNotFound
