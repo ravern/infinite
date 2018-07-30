@@ -1,5 +1,9 @@
 # Infinite
 
+[![GoDoc](https://godoc.org/github.com/ravernkoh/infinite?status.svg)](https://godoc.org/github.com/ravernkoh/infinite)
+[![GoReportCard](https://goreportcard.com/badge/ravernkoh/infinite)](https://goreportcard.com/report/ravernkoh/infinite)
+[![TravisCI](https://travis-ci.org/ravernkoh/infinite.svg?branch=master)](https://travis-ci.org/ravernkoh/infinite)
+
 The database that can store the Internet.
 
 Wouldn't it be awesome if you could save the entire Internet into a database?
