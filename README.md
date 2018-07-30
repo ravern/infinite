@@ -79,3 +79,11 @@ Examples for the package can be found in the [documentation](https://godoc.org/g
 Okay, jokes aside, this project exists simply because I haven't wrote Go in a
 while. The idea of an infinite database was just a joke I made while half asleep
 in class.
+
+## License
+
+This project is licensed under the GNU Public License 3.0.
+
+## Author
+
+- Ravern Koh ([ravernkoh@gmail.com](mailto://ravernkoh@gmail.com)
