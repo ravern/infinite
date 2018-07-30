@@ -86,4 +86,4 @@ This project is licensed under the GNU Public License 3.0.
 
 ## Author
 
-- Ravern Koh ([ravernkoh@gmail.com](mailto://ravernkoh@gmail.com)
+- Ravern Koh ([ravernkoh@gmail.com](mailto://ravernkoh@gmail.com))
