@@ -19,10 +19,7 @@ func init() {
 		Description: "the database that can store the internet",
 	}
 
-	help := root.Help()
-
-	root.Run = help.Run
-	root.Add(help)
+	root.Add(root.Help())
 }
 
 func main() {
