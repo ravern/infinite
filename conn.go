@@ -2,7 +2,7 @@ package infinite
 
 import "github.com/blang/vfs"
 
-// Conn represents the underlying connection to the file system.
+// conn represents the underlying connection to the file system.
 //
 // Usually, Conn will not be used directly but instead accessed by the its
 // wrapper node, which provides higher level functionality and caching.
@@ -10,7 +10,7 @@ import "github.com/blang/vfs"
 // Since Infinite does not contain an actual connection to anything, this simply
 // keeps track of a path within the filesystem and also provides checks for
 // corruption.
-type Conn struct {
+type conn struct {
 	path string
 	fs   vfs.Filesystem
 }
@@ -18,7 +18,7 @@ type Conn struct {
 // ReadDir loads data at the path from the filesystem.
 //
 // Returns the file names, directory names and a possible error.
-func (c *Conn) ReadDir() ([]string, []string, error) {
+func (c *conn) ReadDir() ([]string, []string, error) {
 	infos, err := c.fs.ReadDir(c.path)
 	if err != nil {
 		return nil, nil, err
@@ -42,6 +42,6 @@ func (c *Conn) ReadDir() ([]string, []string, error) {
 }
 
 // Path returns the path of the connected directory.
-func (c *Conn) Path() string {
+func (c *conn) Path() string {
 	return c.path
 }

@@ -20,7 +20,7 @@ const maxInt = int(^uint(0) >> 1)
 // circumstances where the amount of data contained in the child nodes is large
 // and should only be loaded on-demand.
 type Node struct {
-	conn *Conn
+	conn *conn
 
 	loaded   bool
 	value    []byte
@@ -56,7 +56,7 @@ func LoadDepth(path string, depth int) (*Node, error) {
 // filesystem in a recursive manner, up to the given depth.
 func LoadVirtualDepth(path string, fs vfs.Filesystem, depth int) (*Node, error) {
 	n := Node{
-		conn: &Conn{
+		conn: &conn{
 			path: path,
 			fs:   fs,
 		},
@@ -101,7 +101,7 @@ func (n *Node) load(depth int, curDepth int) error {
 	n.children = make(map[string]*Node)
 	for _, dir := range dirs {
 		child := Node{
-			conn: &Conn{
+			conn: &conn{
 				path: path.Join(n.conn.path, dir),
 				fs:   n.conn.fs,
 			},
@@ -193,7 +193,7 @@ func (n *Node) NewChild(key string) (*Node, error) {
 
 	c := &Node{
 		loaded: true,
-		conn: &Conn{
+		conn: &conn{
 			path: path.Join(n.conn.path, key),
 			fs:   n.conn.fs,
 		},
